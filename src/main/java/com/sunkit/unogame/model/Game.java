@@ -5,7 +5,6 @@ import com.sunkit.unogame.datastructures.CircularLinkedList;
 import lombok.Builder;
 import lombok.Data;
 
-import java.util.List;
 import java.util.Stack;
 
 @Data
@@ -14,7 +13,7 @@ public class Game {
     private String gameId;
     private String hostToken;
     private CircularLinkedList<Player> players;
-    private List<Card> dealDeque;
+    private Stack<Card> dealDeque;
     private Stack<Card> discardPile;
     private Player currentPlayer;
     private Boolean skipNext;

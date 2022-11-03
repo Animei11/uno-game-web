@@ -1,4 +1,4 @@
-package com.sunkit.unogame.expection;
+package com.sunkit.unogame.exception;
 
 public class InvalidHostTokenException extends Exception{
 

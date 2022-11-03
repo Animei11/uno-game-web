@@ -4,9 +4,10 @@ import com.sunkit.unogame.model.Card;
 import lombok.Data;
 
 @Data
-public class GamePlayRequest {
+public class PlayCardRequest {
 
     private String gameId;
-    private String playerId;
+    private String playerNickName;
     private Card cardPlayed;
+    private int newColor;
 }

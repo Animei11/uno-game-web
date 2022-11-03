@@ -1,6 +1,6 @@
 package com.sunkit.unogame.storage;
 
-import com.sunkit.unogame.expection.game.InvalidGameIdException;
+import com.sunkit.unogame.exception.game.InvalidGameIdException;
 import com.sunkit.unogame.model.Game;
 
 import java.util.List;

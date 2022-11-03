@@ -3,11 +3,13 @@ package com.sunkit.unogame.datastructures;
 import com.sunkit.unogame.datastructures.interfaces.LinkedList;
 import com.sunkit.unogame.datastructures.interfaces.LinkedListIterator;
 
+import java.util.Iterator;
+
 /**
  * Sun Kit's implementation of a circular doubly linked list
  * @param <E>
  */
-public class CircularLinkedList<E> implements LinkedList<E> {
+public class CircularLinkedList<E> implements LinkedList<E>, Iterable<E> {
 
     private Node<E> head;
     private int size = 0;
@@ -276,6 +278,27 @@ public class CircularLinkedList<E> implements LinkedList<E> {
     /**
      * Returns an iterator that directly iterates through the linked list
      * using the individual nodes and returns the element in the node.
+     *
+     * @return a {@link LinkedListIterator} that can iterate through the
+     * entire linked list
+     * @implNote Does not return the starting node when calling
+     * {@link LinkedListIterator#next()} as the first method but
+     * returns starting node's next node. Same applies to
+     * {@link LinkedListIterator#previous()} which returns the node
+     * previous to the starting node if called first. When referring
+     * to called as the first method means that a method is being
+     * called before a state altering method (ex. {@link LinkedListIterator#next()}
+     * and {@link LinkedListIterator#previous()}) is called. State altering
+     * is defined as changing the positions of the pointers which
+     * will result in the change of values being returned.x
+     */
+    public LinkedListIterator<E> listIterator() {
+        return listIterator(this.size - 1);
+    }
+
+    /**
+     * Returns an iterator that directly iterates through the linked list
+     * using the individual nodes and returns the element in the node.
      * @param initialIndex index of the starting node
      * @return a {@link LinkedListIterator} that can iterate through the
      *          entire linked list
@@ -414,6 +437,31 @@ public class CircularLinkedList<E> implements LinkedList<E> {
             this.data = data;
             this.prev = prev;
             this.next = next;
+        }
+    }
+
+    @Override
+    public Iterator<E> iterator() {
+        return new CustomIterator<>(this);
+    }
+
+    static class CustomIterator<E> implements Iterator<E> {
+        private final CircularLinkedList<E> linkedList;
+        private int currentIndex;
+
+        public CustomIterator(CircularLinkedList<E> linkedList) {
+            this.linkedList = linkedList;
+            this.currentIndex = 0;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return currentIndex < linkedList.size;
+        }
+
+        @Override
+        public E next() {
+            return linkedList.get(currentIndex++);
         }
     }
 }

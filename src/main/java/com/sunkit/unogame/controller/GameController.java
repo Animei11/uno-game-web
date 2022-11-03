@@ -1,16 +1,14 @@
 package com.sunkit.unogame.controller;
 
-import com.sunkit.unogame.controller.requests.CreateGameRequest;
-import com.sunkit.unogame.controller.requests.JoinRequest;
-import com.sunkit.unogame.controller.requests.StartGameRequest;
+import com.sunkit.unogame.controller.requests.*;
+import com.sunkit.unogame.dto.CardsDrawnDTO;
+import com.sunkit.unogame.dto.TestGameDTO;
 import com.sunkit.unogame.dto.message.GameCreatedMessage;
 import com.sunkit.unogame.dto.message.Message;
-import com.sunkit.unogame.expection.InvalidHostTokenException;
-import com.sunkit.unogame.expection.game.GameFinishedException;
-import com.sunkit.unogame.expection.game.GameFullException;
-import com.sunkit.unogame.expection.game.GameInProgressException;
-import com.sunkit.unogame.expection.game.InvalidGameIdException;
-import com.sunkit.unogame.expection.InvalidNickNameException;
+import com.sunkit.unogame.exception.InvalidHostTokenException;
+import com.sunkit.unogame.exception.game.*;
+import com.sunkit.unogame.exception.InvalidNickNameException;
+import com.sunkit.unogame.model.Game;
 import com.sunkit.unogame.service.GameService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,18 +27,40 @@ public class GameController {
     private final GameService gameService;
     private final SimpMessagingTemplate simpMessagingTemplate;
 
+    @GetMapping("/{gameId}")
+    public ResponseEntity<?> getGame(
+            @PathVariable("gameId") String gameId) {
+
+        log.info("Getting game with id: {}", gameId);
+
+        Game game;
+
+        try {
+            game = gameService.getGame(gameId);
+        } catch (Exception e) {
+            log.error("Error getting game with id: {}", gameId, e);
+
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(Message.of(e.getMessage()));
+        }
+
+        return ResponseEntity.ok(TestGameDTO.map(game));
+
+    }
+
     @PostMapping("/create")
     public ResponseEntity<?> createNewGame(
             @RequestBody CreateGameRequest request) {
 
-        log.info("Create game request: {}" , request);
+        log.info("Create game request: {}", request);
 
         GameCreatedMessage response;
 
         try {
             response = gameService.createGame(request.getNickName());
         } catch (InvalidGameIdException exception) {
-            log.error("Error creating new game for: {}" , request, exception);
+            log.error("Error creating new game for: {}", request, exception);
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
                     .body(Message.of(exception.getMessage()));
@@ -85,7 +105,8 @@ public class GameController {
 
             gameService.startGame(request.getGameId(), request.getHostToken());
 
-        } catch (InvalidGameIdException | GameFinishedException | GameInProgressException gameException) {
+        } catch (InvalidGameIdException | GameFinishedException |
+                 GameInProgressException | InsufficientPlayersException gameException) {
 
             log.error("Error processing request: {}", request, gameException);
             return ResponseEntity
@@ -99,5 +120,71 @@ public class GameController {
                     .body(Message.of(invalidHostTokenException.getMessage()));
         }
         return ResponseEntity.ok(Message.of("Game started"));
+    }
+
+    @PostMapping("/playCard")
+    public ResponseEntity<?> playCard(
+            @RequestBody PlayCardRequest request) {
+
+        log.info("Play card request: {}", request);
+
+        try {
+            gameService.playCard(
+                    request.getGameId(),
+                    request.getPlayerNickName(),
+                    request.getCardPlayed(),
+                    request.getNewColor());
+
+        } catch (Exception e) {
+            log.error("Invalid play card request: {}", request, e);
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(Message.of(e.getMessage()));
+        }
+
+        // todo: broadcast play to all players
+
+        return ResponseEntity.ok(Message.of("Card played"));
+    }
+
+    // called when a player has been skipped
+    @PostMapping("/resetSkip/{gameId}")
+    public ResponseEntity<?> skipNextPlayer(
+            @PathVariable("gameId") String gameId) {
+
+        log.info("Reset skip request for game with id: {}", gameId);
+
+        try {
+            gameService.skipNextPlayer(gameId);
+        } catch (InvalidGameIdException e) {
+            log.error("Error resetting skip status for game with id: {}", gameId, e);
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(Message.of(e.getMessage()));
+        }
+        return ResponseEntity.ok(Message.of(
+                "Skip status of game with id: " + gameId +
+                        " has been reset"));
+    }
+
+    @PostMapping("/draw")
+    public ResponseEntity<?> drawCards(
+            @RequestBody DrawCardRequest request) {
+
+        log.info("Draw card request: {}" , request);
+        CardsDrawnDTO cardsDrawnDTO;
+        try {
+            cardsDrawnDTO = gameService.drawCards(
+                    request.getGameId(),
+                    request.getPlayerNickName(),
+                    request.getNumOfDraws());
+        } catch (InvalidNickNameException | InvalidGameIdException e) {
+            log.error("Error processing draw card request: {}", request, e);
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(Message.of(e.getMessage()));
+        }
+
+        return ResponseEntity.ok(cardsDrawnDTO);
     }
 }

@@ -1,4 +1,4 @@
-package com.sunkit.unogame.dto;
+package com.sunkit.unogame.payloads.dto;
 
 import com.sunkit.unogame.model.Card;
 import com.sunkit.unogame.model.Game;

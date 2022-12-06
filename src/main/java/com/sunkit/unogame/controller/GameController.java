@@ -1,13 +1,15 @@
 package com.sunkit.unogame.controller;
 
 import com.sunkit.unogame.controller.requests.*;
-import com.sunkit.unogame.dto.CardsDrawnDTO;
-import com.sunkit.unogame.dto.TestGameDTO;
-import com.sunkit.unogame.dto.message.GameCreatedMessage;
-import com.sunkit.unogame.dto.message.Message;
+import com.sunkit.unogame.payloads.dto.TestGameDTO;
+import com.sunkit.unogame.payloads.requests.*;
+import com.sunkit.unogame.payloads.responses.GameCreatedMessage;
+import com.sunkit.unogame.payloads.responses.Message;
+import com.sunkit.unogame.payloads.responses.PlayerJoinMessage;
 import com.sunkit.unogame.exception.InvalidHostTokenException;
-import com.sunkit.unogame.exception.game.*;
 import com.sunkit.unogame.exception.InvalidNickNameException;
+import com.sunkit.unogame.exception.game.*;
+import com.sunkit.unogame.model.Card;
 import com.sunkit.unogame.model.Game;
 import com.sunkit.unogame.service.GameService;
 import lombok.AllArgsConstructor;
@@ -17,11 +19,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
-@RestController
+import java.util.List;
 @Slf4j
+@CrossOrigin("*")
+@RestController
 @AllArgsConstructor
-@CrossOrigin
-@RequestMapping("/unoGame")
+@RequestMapping("/api")
 public class GameController {
 
     private final GameService gameService;
@@ -58,7 +61,7 @@ public class GameController {
         GameCreatedMessage response;
 
         try {
-            response = gameService.createGame(request.getNickName());
+            response = gameService.createGame(request.getNickname());
         } catch (InvalidGameIdException exception) {
             log.error("Error creating new game for: {}", request, exception);
             return ResponseEntity
@@ -66,8 +69,6 @@ public class GameController {
                     .body(Message.of(exception.getMessage()));
         }
 
-        log.info("Successfully created new game for: {}",
-                request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
@@ -79,9 +80,9 @@ public class GameController {
 
         log.info("Join game request: {}", request);
 
-        Message response;
+        PlayerJoinMessage response;
         try {
-            response = gameService.joinGame(request.getGameId(), request.getNickName());
+            response = gameService.joinGame(request.getGameId(), request.getNickname());
         } catch (InvalidGameIdException | InvalidNickNameException | GameInProgressException | GameFullException |
                  GameFinishedException exception) {
             log.error("Error processing request: {}", request, exception);
@@ -91,6 +92,9 @@ public class GameController {
         }
 
         // todo: notify game host to start the game if gameState is FULL
+        simpMessagingTemplate.convertAndSend(
+                "/topic/game-progress/" + request.getGameId(), response);
+
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -113,12 +117,12 @@ public class GameController {
                     .status(HttpStatus.BAD_REQUEST)
                     .body(Message.of(gameException.getMessage()));
         } catch (InvalidHostTokenException invalidHostTokenException) {
-
             log.error("Request denied: {}", request, invalidHostTokenException);
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
                     .body(Message.of(invalidHostTokenException.getMessage()));
         }
+
         return ResponseEntity.ok(Message.of("Game started"));
     }
 
@@ -131,7 +135,7 @@ public class GameController {
         try {
             gameService.playCard(
                     request.getGameId(),
-                    request.getPlayerNickName(),
+                    request.getPlayerNickname(),
                     request.getCardPlayed(),
                     request.getNewColor());
 
@@ -148,20 +152,23 @@ public class GameController {
     }
 
     // called when a player has been skipped
-    @PostMapping("/resetSkip/{gameId}")
-    public ResponseEntity<?> skipNextPlayer(
+    @PostMapping("/skip/{gameId}")
+    public ResponseEntity<?> skipCurrentPlayer(
             @PathVariable("gameId") String gameId) {
 
         log.info("Reset skip request for game with id: {}", gameId);
 
         try {
-            gameService.skipNextPlayer(gameId);
+            gameService.skipCurrentPlayer(gameId);
         } catch (InvalidGameIdException e) {
             log.error("Error resetting skip status for game with id: {}", gameId, e);
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
                     .body(Message.of(e.getMessage()));
         }
+
+        // todo: broadcast to all other players
+
         return ResponseEntity.ok(Message.of(
                 "Skip status of game with id: " + gameId +
                         " has been reset"));
@@ -172,11 +179,11 @@ public class GameController {
             @RequestBody DrawCardRequest request) {
 
         log.info("Draw card request: {}" , request);
-        CardsDrawnDTO cardsDrawnDTO;
+        List<Card> cardsDrawn;
         try {
-            cardsDrawnDTO = gameService.drawCards(
+            cardsDrawn = gameService.drawCards(
                     request.getGameId(),
-                    request.getPlayerNickName(),
+                    request.getPlayerNickname(),
                     request.getNumOfDraws());
         } catch (InvalidNickNameException | InvalidGameIdException e) {
             log.error("Error processing draw card request: {}", request, e);
@@ -185,6 +192,6 @@ public class GameController {
                     .body(Message.of(e.getMessage()));
         }
 
-        return ResponseEntity.ok(cardsDrawnDTO);
+        return ResponseEntity.ok(cardsDrawn);
     }
 }

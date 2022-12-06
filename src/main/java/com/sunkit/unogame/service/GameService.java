@@ -1,8 +1,7 @@
 package com.sunkit.unogame.service;
 
-import com.sunkit.unogame.dto.CardsDrawnDTO;
-import com.sunkit.unogame.dto.message.GameCreatedMessage;
-import com.sunkit.unogame.dto.message.Message;
+import com.sunkit.unogame.payloads.responses.GameCreatedMessage;
+import com.sunkit.unogame.payloads.responses.PlayerJoinMessage;
 import com.sunkit.unogame.exception.InvalidHostTokenException;
 import com.sunkit.unogame.exception.InvalidNickNameException;
 import com.sunkit.unogame.exception.game.*;
@@ -11,7 +10,7 @@ import com.sunkit.unogame.model.Game;
 import com.sunkit.unogame.model.GameState;
 import com.sunkit.unogame.model.Player;
 import com.sunkit.unogame.storage.GameStorage;
-import com.sunkit.unogame.util.GameUtil;
+import com.sunkit.unogame.util.GameUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -35,7 +34,7 @@ public class GameService {
 
 
     public GameCreatedMessage createGame(String nickName) throws InvalidGameIdException {
-        Game game = GameUtil.createNewGame(nickName);
+        Game game = GameUtils.createNewGame(nickName);
         // ensure every game has an unique id
         while (gameStorage.hasGameWithId(game.getGameId())) {
             game.setGameId(UUID.randomUUID().toString());
@@ -46,10 +45,11 @@ public class GameService {
         return GameCreatedMessage.builder()
                 .gameId(game.getGameId())
                 .hostToken(game.getHostToken())
+                .gameState(game.getGameState())
                 .build();
     }
 
-    public Message joinGame(String gameId, String nickName) throws InvalidGameIdException, InvalidNickNameException, GameInProgressException, GameFullException, GameFinishedException {
+    public PlayerJoinMessage joinGame(String gameId, String nickName) throws InvalidGameIdException, InvalidNickNameException, GameInProgressException, GameFullException, GameFinishedException {
 
         Game game = gameStorage.getGame(gameId);
 
@@ -73,7 +73,7 @@ public class GameService {
 
         // create new player if all checks have passed
         Player player = Player.builder()
-                .nickName(nickName)
+                .nickname(nickName)
                 .hand(new ArrayList<>())
                 .build();
 
@@ -84,7 +84,11 @@ public class GameService {
             game.setGameState(GameState.FULL);
         }
 
-        return Message.of("You have successfully joined game with id: " + gameId);
+        return PlayerJoinMessage.of(
+                gameId,
+                nickName,
+                game.getGameState(),
+                game.getPlayers().size());
     }
 
     public void startGame(String gameId, String hostToken) throws InvalidHostTokenException, GameInProgressException, GameFinishedException, InvalidGameIdException, InsufficientPlayersException {
@@ -109,7 +113,7 @@ public class GameService {
 
             // start game if all checks passed
             // complete the rest of the setup of the game to start it
-            GameUtil.initializeGame(game);
+            GameUtils.initializeGame(game);
         } else {
             throw new InvalidHostTokenException("Host token provided is invalid");
         }
@@ -136,7 +140,7 @@ public class GameService {
         Game game = gameStorage.getGame(gameId);
 
         // ensure that the player is current player
-        if (!playerNickName.equals(game.getCurrentPlayer().getNickName())) {
+        if (!playerNickName.equals(game.getCurrentPlayer().getNickname())) {
             throw new InvalidNickNameException(
                     "Player with nickname: " + playerNickName +
                     " is not the current player");
@@ -151,32 +155,45 @@ public class GameService {
                     " does not have the card: " + cardPlayed);
         }
 
-        GameUtil.playCard(game, player, cardPlayed, newColor);
+        GameUtils.playCard(game, player, cardPlayed, newColor);
 
-        // set next player depending on the gameplay direction
-        if (game.getGamePlayDirection().equals(CLOCKWISE)) {
-            game.setCurrentPlayer(game.getPlayerIterator().next());
-        } else {
-            game.setCurrentPlayer(game.getPlayerIterator().previous());
-        }
+        // set next player to be current player
+        nextPlayer(gameId);
     }
 
-    public void skipNextPlayer(String gameId) throws InvalidGameIdException {
+    public void nextPlayer(String gameId) throws InvalidGameIdException {
         Game game = gameStorage.getGame(gameId);
 
         // set next player to be current player
-        // effectively skipping current player
         if (game.getGamePlayDirection().equals(CLOCKWISE)) {
             game.setCurrentPlayer(game.getPlayerIterator().next());
         } else {
             game.setCurrentPlayer(game.getPlayerIterator().previous());
         }
+    }
 
-        // reset skip to false
+    public void skipCurrentPlayer(String gameId) throws InvalidGameIdException {
+        Game game = gameStorage.getGame(gameId);
+        nextPlayer(gameId);
         game.setSkipNext(false);
     }
 
-    public CardsDrawnDTO drawCards(
+    /**
+     * Handles the draw card request from player and automatically sets the next
+     * player as the current player if the draw was due to an action card played
+     * by another player
+     * @param gameId game id of the game being handled
+     * @param playerNickName nickname of player drawing cards
+     * @param numOfDraws number of cards to be drawn
+     * @return a {@link List} of {@link Card} that was drawn by the player
+     * @throws InvalidGameIdException when the game with id passed in cannot be found
+     * @throws InvalidNickNameException when the game with game id passed in doesn't
+     *                                  have a player with nickname passed in
+     * @implNote Frontend needs to handle the case where a single card is drawn
+     *              due to no cards to play to determine the player actions in case
+     *              of an action card being played.
+     */
+    public List<Card> drawCards(
             String gameId,
             String playerNickName,
             Integer numOfDraws) throws InvalidGameIdException, InvalidNickNameException {
@@ -184,7 +201,7 @@ public class GameService {
         Game game = gameStorage.getGame(gameId);
 
         // ensure that the player is current player
-        if (!playerNickName.equals(game.getCurrentPlayer().getNickName())) {
+        if (!playerNickName.equals(game.getCurrentPlayer().getNickname())) {
             throw new InvalidNickNameException(
                     "Player with nickname: " + playerNickName +
                             " is not the current player");
@@ -195,15 +212,22 @@ public class GameService {
 
         List<Card> cardsDrawn = new ArrayList<>();
 
-        // draw the number of cards requested
+        // draw the number of cards requested and update the game state accordingly
         for (int i = 0; i < numOfDraws; i++) {
             Card cardDrawn = dealDeque.pop();
             player.getHand().add(cardDrawn);
+            cardsDrawn.add(cardDrawn);
         }
 
         // reset draws for next player
         game.setNextDraws(0);
 
-        return CardsDrawnDTO.of(cardsDrawn);
+        // once a player draws a card, the turn is over unless it is playable
+        // directly set next player if the draw wasn't due to no cards to play
+        if (numOfDraws != 1) {
+            nextPlayer(gameId);
+        }
+
+        return cardsDrawn;
     }
 }

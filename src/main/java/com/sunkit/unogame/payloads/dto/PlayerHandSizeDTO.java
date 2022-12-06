@@ -1,4 +1,4 @@
-package com.sunkit.unogame.dto;
+package com.sunkit.unogame.payloads.dto;
 
 import lombok.Builder;
 import lombok.Data;

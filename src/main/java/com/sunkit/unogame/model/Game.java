@@ -30,7 +30,7 @@ public class Game {
 
     public boolean nickNameTaken(String nickName) {
         for (int i = 0; i < players.size(); i++) {
-            if (players.get(i).getNickName().equals(nickName))
+            if (players.get(i).getNickname().equals(nickName))
                 return true;
         }
         return false;

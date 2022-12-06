@@ -1,4 +1,4 @@
-package com.sunkit.unogame.controller.requests;
+package com.sunkit.unogame.payloads.requests;
 
 import lombok.Data;
 
@@ -6,5 +6,5 @@ import lombok.Data;
 public class JoinRequest {
 
     private String gameId;
-    private String nickName;
+    private String nickname;
 }

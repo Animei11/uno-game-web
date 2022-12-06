@@ -8,6 +8,6 @@ import java.util.List;
 @Data
 @Builder
 public class Player {
-    String nickName;
+    String nickname;
     List<Card> hand;
 }

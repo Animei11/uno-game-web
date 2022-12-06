@@ -17,12 +17,12 @@ import static com.sunkit.unogame.model.GamePlayDirection.CLOCKWISE;
 import static com.sunkit.unogame.model.GamePlayDirection.COUNTER_CLOCKWISE;
 import static com.sunkit.unogame.model.GameState.IN_PROGRESS;
 
-public class GameUtil {
+public class GameUtils {
     public static Game createNewGame(String hostNickName) {
 
         // construct host player
         Player host = Player.builder()
-                .nickName(hostNickName)
+                .nickname(hostNickName)
                 .hand(new ArrayList<>())
                 .build();
         CircularLinkedList<Player> players = new CircularLinkedList<>();
@@ -129,6 +129,14 @@ public class GameUtil {
         Stack<Card> discardPile = game.getDiscardPile();
         Card topCard = discardPile.peek();
 
+        if (game.getNextDraws() > 0) {
+            if (!isDrawCard(cardPlayed)) {
+                throw new InvalidPlayException(
+                        "You need to draw " + game.getNextDraws() + " cards");
+            }
+        }
+
+
         if (isValidPlay(topCard, cardPlayed)) {
             // remove card from player hand
             player.getHand().remove(cardPlayed);
@@ -153,6 +161,10 @@ public class GameUtil {
         }
     }
 
+    private static boolean isDrawCard(Card cardPlayed) {
+        return cardPlayed.value() == 12 || cardPlayed.value() == 14;
+    }
+
     private static boolean isWildCard(Card cardPlayed) {
         return cardPlayed.color() == 4;
     }
@@ -173,7 +185,7 @@ public class GameUtil {
         }
     }
 
-    private static boolean isValidPlay(
+    public static boolean isValidPlay(
             Card topCard,
             Card cardPlayed) {
 

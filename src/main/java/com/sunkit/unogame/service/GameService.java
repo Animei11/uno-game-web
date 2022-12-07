@@ -134,11 +134,11 @@ public class GameService {
      * @throws InvalidNickNameException when player with nickname passed in isn't
      *                                  the current player in the game specified
      */
-    public void playCard(
+    public GameUpdateDTO playCard(
             String gameId,
             String playerNickName,
             Card cardPlayed,
-            int newColor) throws InvalidGameIdException, InvalidNickNameException, InvalidPlayException {
+            int newColor) throws InvalidGameIdException, InvalidNickNameException, InvalidPlayException, NeedToDrawCardsException {
 
         Game game = gameStorage.getGame(gameId);
 
@@ -162,6 +162,8 @@ public class GameService {
 
         // set next player to be current player
         nextPlayer(gameId);
+
+        return GameUpdateDTO.of(game);
     }
 
     public void nextPlayer(String gameId) throws InvalidGameIdException {

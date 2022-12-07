@@ -6,6 +6,7 @@ public enum MessageType {
     CREATE,
     START,
     FULL,
+    DRAW_CARD,
     GAME_UPDATE,
     CARDS_DRAWN
 }

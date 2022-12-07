@@ -2,6 +2,7 @@ package com.sunkit.unogame.util;
 
 import com.sunkit.unogame.datastructures.CircularLinkedList;
 import com.sunkit.unogame.exception.game.InvalidPlayException;
+import com.sunkit.unogame.exception.game.NeedToDrawCardsException;
 import com.sunkit.unogame.model.Card;
 import com.sunkit.unogame.model.Game;
 import com.sunkit.unogame.model.Player;
@@ -124,15 +125,15 @@ public class GameUtils {
             Game game,
             Player player,
             @NonNull Card cardPlayed,
-            int newColor) throws InvalidPlayException {
+            int newColor) throws InvalidPlayException, NeedToDrawCardsException {
 
         Stack<Card> discardPile = game.getDiscardPile();
         Card topCard = discardPile.peek();
 
+        // todo: implement draw card exception and DrawCardMessage
         if (game.getNextDraws() > 0) {
             if (!isDrawCard(cardPlayed)) {
-                throw new InvalidPlayException(
-                        "You need to draw " + game.getNextDraws() + " cards");
+                throw new NeedToDrawCardsException(game.getNextDraws());
             }
         }
 
@@ -179,9 +180,9 @@ public class GameUtils {
                     game.setGamePlayDirection(CLOCKWISE);
                 }
             }
-            case 12 -> game.setNextDraws(2); // draw two
+            case 12 -> game.setNextDraws(game.getNextDraws() + 2); // draw two
             case 13 -> {/* wild card already taken care of */}
-            case 14 -> game.setNextDraws(4); // draw four
+            case 14 -> game.setNextDraws(game.getNextDraws() + 4); // draw four
         }
     }
 

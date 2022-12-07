@@ -8,10 +8,7 @@ import com.sunkit.unogame.model.Game;
 import com.sunkit.unogame.payloads.dto.GameUpdateDTO;
 import com.sunkit.unogame.payloads.dto.TestGameDTO;
 import com.sunkit.unogame.payloads.requests.*;
-import com.sunkit.unogame.payloads.responses.GameCreatedMessage;
-import com.sunkit.unogame.payloads.responses.Message;
-import com.sunkit.unogame.payloads.responses.PlayerJoinMessage;
-import com.sunkit.unogame.payloads.responses.StartGameMessage;
+import com.sunkit.unogame.payloads.responses.*;
 import com.sunkit.unogame.service.GameService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -140,13 +137,19 @@ public class GameController {
 
         log.info("Play card request: {}", request);
 
+        GameUpdateDTO gameUpdateDTO;
         try {
-            gameService.playCard(
+            gameUpdateDTO = gameService.playCard(
                     request.getGameId(),
                     request.getPlayerNickname(),
                     request.getCardPlayed(),
                     request.getNewColor());
 
+        } catch (NeedToDrawCardsException e) {
+            log.error("Need to draw card before processing request: {}", request, e);
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(DrawCardMessage.of(e.getNumOfCardsToDraw()));
         } catch (Exception e) {
             log.error("Invalid play card request: {}", request, e);
             return ResponseEntity
@@ -155,6 +158,9 @@ public class GameController {
         }
 
         // todo: broadcast play to all players
+        simpMessagingTemplate.convertAndSend(
+                "/topic/game-progress/" + request.getGameId(),
+                gameUpdateDTO);
 
         return ResponseEntity.ok(Message.of("Card played"));
     }
@@ -199,6 +205,10 @@ public class GameController {
                     .status(HttpStatus.BAD_REQUEST)
                     .body(Message.of(e.getMessage()));
         }
+
+        simpMessagingTemplate.convertAndSend(
+                "/topic/game-progress/" + request.getGameId(),
+                new CardsDrawnMessage(request.getPlayerNickname(), cardsDrawn.size()));
 
         return ResponseEntity.ok(cardsDrawn);
     }

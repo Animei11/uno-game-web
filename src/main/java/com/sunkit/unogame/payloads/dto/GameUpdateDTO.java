@@ -20,7 +20,7 @@ public class GameUpdateDTO {
     private MessageType messageType = MessageType.GAME_UPDATE;
     private String gameId;
     private Card topCard;
-    private String currentPlayerNickName;
+    private String currentPlayerNickname;
     private Map<String, List<Card>> hands;
     private boolean skipNext;
     private int nextDraws;
@@ -37,7 +37,7 @@ public class GameUpdateDTO {
         return GameUpdateDTO.builder()
                 .gameId(game.getGameId())
                 .topCard(game.getDiscardPile().peek())
-                .currentPlayerNickName(game.getCurrentPlayer().getNickname())
+                .currentPlayerNickname(game.getCurrentPlayer().getNickname())
                 .hands(handSizes)
                 .skipNext(game.getSkipNext())
                 .nextDraws(game.getNextDraws())

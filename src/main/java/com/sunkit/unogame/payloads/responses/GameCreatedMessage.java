@@ -11,14 +11,17 @@ public class GameCreatedMessage {
     MessageType messageType = MessageType.CREATE;
     String gameId;
     String hostToken;
+    String nickname;
     GameState gameState;
 
     public static GameCreatedMessage of(String gameId,
                                         String hostToken,
+                                        String nickname,
                                         GameState gameState) {
         return GameCreatedMessage.builder()
                 .gameId(gameId)
                 .hostToken(hostToken)
+                .nickname(nickname)
                 .gameState(gameState)
                 .build();
     }

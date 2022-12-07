@@ -1,16 +1,17 @@
 package com.sunkit.unogame.controller;
 
-import com.sunkit.unogame.controller.requests.*;
-import com.sunkit.unogame.payloads.dto.TestGameDTO;
-import com.sunkit.unogame.payloads.requests.*;
-import com.sunkit.unogame.payloads.responses.GameCreatedMessage;
-import com.sunkit.unogame.payloads.responses.Message;
-import com.sunkit.unogame.payloads.responses.PlayerJoinMessage;
 import com.sunkit.unogame.exception.InvalidHostTokenException;
 import com.sunkit.unogame.exception.InvalidNickNameException;
 import com.sunkit.unogame.exception.game.*;
 import com.sunkit.unogame.model.Card;
 import com.sunkit.unogame.model.Game;
+import com.sunkit.unogame.payloads.dto.GameUpdateDTO;
+import com.sunkit.unogame.payloads.dto.TestGameDTO;
+import com.sunkit.unogame.payloads.requests.*;
+import com.sunkit.unogame.payloads.responses.GameCreatedMessage;
+import com.sunkit.unogame.payloads.responses.Message;
+import com.sunkit.unogame.payloads.responses.PlayerJoinMessage;
+import com.sunkit.unogame.payloads.responses.StartGameMessage;
 import com.sunkit.unogame.service.GameService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -91,7 +92,6 @@ public class GameController {
                     .body(Message.of(exception.getMessage()));
         }
 
-        // todo: notify game host to start the game if gameState is FULL
         simpMessagingTemplate.convertAndSend(
                 "/topic/game-progress/" + request.getGameId(), response);
 
@@ -105,9 +105,12 @@ public class GameController {
     public ResponseEntity<?> startGame(
             @RequestBody StartGameRequest request) {
 
+        log.info("Starting game with id: {}", request.getGameId());
+
+        GameUpdateDTO gameUpdateDTO;
         try {
 
-            gameService.startGame(request.getGameId(), request.getHostToken());
+            gameUpdateDTO = gameService.startGame(request.getGameId(), request.getHostToken());
 
         } catch (InvalidGameIdException | GameFinishedException |
                  GameInProgressException | InsufficientPlayersException gameException) {
@@ -123,7 +126,12 @@ public class GameController {
                     .body(Message.of(invalidHostTokenException.getMessage()));
         }
 
-        return ResponseEntity.ok(Message.of("Game started"));
+        StartGameMessage startGameResponse = new StartGameMessage(gameUpdateDTO);
+        simpMessagingTemplate.convertAndSend(
+                "/topic/game-progress/" + request.getGameId(),
+                startGameResponse);
+
+        return ResponseEntity.ok(startGameResponse);
     }
 
     @PostMapping("/playCard")

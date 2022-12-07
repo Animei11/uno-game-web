@@ -1,5 +1,6 @@
 package com.sunkit.unogame.service;
 
+import com.sunkit.unogame.payloads.dto.GameUpdateDTO;
 import com.sunkit.unogame.payloads.responses.GameCreatedMessage;
 import com.sunkit.unogame.payloads.responses.PlayerJoinMessage;
 import com.sunkit.unogame.exception.InvalidHostTokenException;
@@ -42,11 +43,12 @@ public class GameService {
 
         gameStorage.addGame(game);
 
-        return GameCreatedMessage.builder()
-                .gameId(game.getGameId())
-                .hostToken(game.getHostToken())
-                .gameState(game.getGameState())
-                .build();
+        return GameCreatedMessage.of(
+                game.getGameId(),
+                game.getHostToken(),
+                nickName,
+                game.getGameState()
+        );
     }
 
     public PlayerJoinMessage joinGame(String gameId, String nickName) throws InvalidGameIdException, InvalidNickNameException, GameInProgressException, GameFullException, GameFinishedException {
@@ -91,7 +93,7 @@ public class GameService {
                 game.getPlayers().size());
     }
 
-    public void startGame(String gameId, String hostToken) throws InvalidHostTokenException, GameInProgressException, GameFinishedException, InvalidGameIdException, InsufficientPlayersException {
+    public GameUpdateDTO startGame(String gameId, String hostToken) throws InvalidHostTokenException, GameInProgressException, GameFinishedException, InvalidGameIdException, InsufficientPlayersException {
         Game game = gameStorage.getGame(gameId);
 
         // check if host token is valid
@@ -114,6 +116,7 @@ public class GameService {
             // start game if all checks passed
             // complete the rest of the setup of the game to start it
             GameUtils.initializeGame(game);
+            return GameUpdateDTO.of(game);
         } else {
             throw new InvalidHostTokenException("Host token provided is invalid");
         }

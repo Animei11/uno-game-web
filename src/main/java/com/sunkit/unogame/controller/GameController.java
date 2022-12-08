@@ -168,9 +168,9 @@ public class GameController {
     // called when a player has been skipped
     @PostMapping("/skip/{gameId}")
     public ResponseEntity<?> skipCurrentPlayer(
-            @PathVariable("gameId") String gameId) {
+            @PathVariable("gameId") String gameId) throws Exception {
 
-        log.info("Reset skip request for game with id: {}", gameId);
+        log.info("Skip current player request for game with id: {}", gameId);
 
         try {
             gameService.skipCurrentPlayer(gameId);
@@ -181,7 +181,10 @@ public class GameController {
                     .body(Message.of(e.getMessage()));
         }
 
-        // todo: broadcast to all other players
+        String newCurrentPlayerNickname = gameService.getGame(gameId).getCurrentPlayer().getNickname();
+        simpMessagingTemplate.convertAndSend(
+                "/topic/game-progress" + gameId,
+                SkipCurrentPlayerMessage.of(newCurrentPlayerNickname));
 
         return ResponseEntity.ok(Message.of(
                 "Skip status of game with id: " + gameId +
@@ -190,7 +193,7 @@ public class GameController {
 
     @PostMapping("/draw")
     public ResponseEntity<?> drawCards(
-            @RequestBody DrawCardRequest request) {
+            @RequestBody DrawCardRequest request) throws Exception {
 
         log.info("Draw card request: {}" , request);
         List<Card> cardsDrawn;
@@ -206,9 +209,14 @@ public class GameController {
                     .body(Message.of(e.getMessage()));
         }
 
+        String newCurrentPlayerNickname = gameService.getGame(request.getGameId()).getCurrentPlayer().getNickname();
         simpMessagingTemplate.convertAndSend(
                 "/topic/game-progress/" + request.getGameId(),
-                new CardsDrawnMessage(request.getPlayerNickname(), cardsDrawn.size()));
+                new CardsDrawnMessage(request.getPlayerNickname(), cardsDrawn.size(), newCurrentPlayerNickname));
+
+//        simpMessagingTemplate.convertAndSend(
+//                "/topic/game-progress" + request.getGameId(),
+//                SkipCurrentPlayerMessage.of(newCurrentPlayerNickname));
 
         return ResponseEntity.ok(cardsDrawn);
     }

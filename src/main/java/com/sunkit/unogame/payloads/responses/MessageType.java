@@ -8,5 +8,6 @@ public enum MessageType {
     FULL,
     DRAW_CARD,
     GAME_UPDATE,
-    CARDS_DRAWN
+    CARDS_DRAWN,
+    SKIP_PLAYER
 }

@@ -12,6 +12,7 @@ import com.sunkit.unogame.model.GameState;
 import com.sunkit.unogame.model.Player;
 import com.sunkit.unogame.storage.GameStorage;
 import com.sunkit.unogame.util.GameUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -21,6 +22,7 @@ import java.util.UUID;
 
 import static com.sunkit.unogame.model.GamePlayDirection.CLOCKWISE;
 
+@Slf4j
 @Service
 public class GameService {
     private final GameStorage gameStorage;
@@ -169,12 +171,16 @@ public class GameService {
     public void nextPlayer(String gameId) throws InvalidGameIdException {
         Game game = gameStorage.getGame(gameId);
 
+        log.info("Current player: {}", game.getCurrentPlayer().getNickname());
+
         // set next player to be current player
         if (game.getGamePlayDirection().equals(CLOCKWISE)) {
             game.setCurrentPlayer(game.getPlayerIterator().next());
         } else {
             game.setCurrentPlayer(game.getPlayerIterator().previous());
         }
+
+        log.info("New current player: {}", game.getCurrentPlayer().getNickname());
     }
 
     public void skipCurrentPlayer(String gameId) throws InvalidGameIdException {

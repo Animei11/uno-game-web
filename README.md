@@ -1,4 +1,4 @@
-# UNO Game Web App
+# UNO Game Backend API
 Group project for CSC-205
 
 Group members

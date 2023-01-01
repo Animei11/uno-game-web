@@ -1,5 +1,5 @@
 # UNO Game Backend API
-Group project for CSC-205
+Group project for CSC-205 Algorithms & Data Structures
 
 Group members
 - Alexander Bope
@@ -9,6 +9,7 @@ Group members
 
 Technology
 - Java
+- Spring Boot
 - Javascript
 - HTML
 - CSS
